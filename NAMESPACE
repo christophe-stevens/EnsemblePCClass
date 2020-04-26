@@ -1,0 +1,37 @@
+#exportPattern("^[[:alpha:]]+")
+
+importFrom("graphics", "abline", "par", "plot")
+importFrom("stats", "prcomp", "predict")
+importFrom("utils", "tar", "untar")
+  
+#importFrom(methods,setClass,setMethod,new)
+import(methods)
+import(EnsembleBaseClass)
+importFrom(parallel, detectCores)
+
+# epcclass.R
+export(epcclass.baselearner.control
+  , epcclass.integrator.control
+  , epcclass
+  , epcclass.save, epcclass.load)
+
+S3method(predict, epcclass)
+S3method(print, epcclass)
+S3method(summary, epcclass)
+S3method(print, summary.epcclass)
+S3method(plot, epcclass)
+
+# integrator.R
+export(Classification.Sweep.CV.Fit)
+#exportMethods(Classification.Sweep.Fit)
+S3method(predict, Classification.Sweep.CV.FitObj)
+exportClasses(Classification.Sweep.PCR.Config
+  , Classification.Sweep.PCR.FitObj
+  , Classification.Integrator.PCR.SelMin.Config
+  , Classification.Integrator.PCR.SelMin.FitObj
+  , Classification.Sweep.CV.FitObj)
+S3method(predict, Classification.Sweep.PCR.FitObj)
+S3method(predict, Classification.Integrator.PCR.SelMin.FitObj)
+
+
+

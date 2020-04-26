@@ -1,0 +1,26 @@
+
+devtools::install_github("christophe-stevens/EnsembleBaseClass")
+devtools::install_github("christophe-stevens/EnsemblePCClass")
+
+require("EnsembleBaseClass") 
+require("EnsemblePCClass") 
+
+
+# Data preparation
+require(mlbench)  # install.packages("mlbench")  
+data(PimaIndiansDiabetes)
+dataset <- PimaIndiansDiabetes
+# The response variable should be a vector with 0 and 1, and as a factor.  
+dataset$diabetes <- as.factor(ifelse(dataset$diabetes=="pos",1,0))
+myformula <- diabetes ~ insulin + age + triceps
+perc.train <- 0.7
+index.train <- sample(1:nrow(dataset), size = round(perc.train*nrow(dataset)))
+data.train <- dataset[index.train,]
+data.predict <- dataset[-index.train,]
+
+# training ensemble
+control <- epcclass.baselearner.control(baselearners=c("knn")) #c("penreg","svm","knn","nnet","gbm","rf"))
+ensemble <- epcclass(formula =  myformula, data = data.train, baselearner.control= control)
+plot(ensemble)
+pred <- round(predict(ensemble,newdata=data.predict))
+table(pred, data.predict$diabetes)
