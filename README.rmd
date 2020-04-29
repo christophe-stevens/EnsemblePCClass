@@ -1,5 +1,5 @@
-devtools::install("christophe-stevens/EnsembleBaseClass")
-devtools::install("christophe-stevens/EnsemblePCClass")
+devtools::install_github("christophe-stevens/EnsembleBaseClass")
+devtools::install_github("christophe-stevens/EnsemblePCClass")
 
 require("EnsembleBaseClass") 
 require("EnsemblePCClass") 
