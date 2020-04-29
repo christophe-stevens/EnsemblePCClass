@@ -59,26 +59,23 @@ Classification.Sweep.PCR.FitObj <- setClass("Classification.Sweep.PCR.FitObj", c
 setMethod("Classification.Sweep.Fit", "Classification.Sweep.PCR.Config",
   function(object, X, y) {
     maxpc <- min(dim(X))
-    # convert to numeric matrix
-    Xint <- sapply(X, FUN=as.numeric)
-    Xint <- matrix(data=Xint, ncol=ncol(X), nrow=nrow(X))
-    yInt <- as.numeric(y)
-    pcr <- prcomp(Xint)
-    Xpc <- cbind(1,predict(pcr, Xint))
-    XtX <- t(Xpc)%*%Xpc
-    Xty <- t(Xpc)%*%yInt
+    pcr <- prcomp(X*100)  # avoid having probability but use count using loggOdd here returns error due to +/-Inf
+    Xpc <- predict(pcr, X)
     predmat <- array(NA, dim=c(nrow(X),maxpc))
     beta.list <- list()
+    pca.reg.data <- cbind(data.frame(y=y), as.data.frame(Xpc))
     for (i in 1:maxpc) {
       # add a try wrapper, trap error and exit loop; this allows us to go to higher pc's and not arbitrarily choose a cutoff
-      betatmp <- try(solve(XtX[1:(i+1),1:(i+1)], Xty[1:(i+1)]),T) # using normal equations, faster but less stable
-      if (inherits(betatmp, "try-error")) {
-        #cat("singularity encountered at i=", i, "\n")
+      fml <- formula(paste("y ~ ",paste("PC",1:i,collapse="+",sep=""),sep=""))
+      glmmdl <- try(glm( fml, data  = pca.reg.data ,family=binomial(link = "logit"),
+                                               singular.ok = F))
+      if (inherits(glmmdl, "try-error")) {
+        cat("singularity encountered at i=", i, "\n")
         i <- i-1
         break
       }
-      predmat[,i] <- Xpc[,1:(i+1)]%*%betatmp
-      beta.list[[i]] <- betatmp
+      predmat[,i] <- as.vector(round(glmmdl$fitted))
+      beta.list[[i]] <- as.vector(glmmdl$coeff)
     }
     object@n <- i
     est <- list(pcr=pcr, beta.list=beta.list, dimX=dim(X))
@@ -90,12 +87,11 @@ setMethod("Classification.Sweep.Fit", "Classification.Sweep.PCR.Config",
 predict.Classification.Sweep.PCR.FitObj <- function(object, Xnew=NULL, ...) {
   if (is.null(Xnew)) return (object@pred)
   maxpc <- object@config@n
-  XnewInt <- sapply(Xnew, FUN=as.numeric)
-  XnewInt<- matrix(data=XnewInt, ncol=ncol(Xnew), nrow=nrow(Xnew))
-  Xpc.new <- cbind(1,predict(object@est$pcr, XnewInt)[,1:maxpc,drop=F])
+  Xpc.new <- cbind(1,predict(object@est$pcr, Xnew)[,1:maxpc,drop=F])
   newpred <- array(NA, dim=c(nrow(Xnew),maxpc))
   for (i in 1:maxpc) {
-    newpred[,i] <- Xpc.new[,1:(i+1)]%*%object@est$beta.list[[i]]
+    xb <- Xpc.new[,1:(i+1)]%*%object@est$beta.list[[i]]
+    newpred[,i] <- exp(xb)/(exp(xb)+1)
   }
   return (newpred)
 }
@@ -106,7 +102,7 @@ Classification.Select.MinErr.Config <- setClass("Classification.Select.MinErr.Co
 Classification.Select.MinErr.FitObj <- setClass("Classification.Select.MinErr.FitObj", contains = "Classification.Select.FitObj")
 setMethod("Classification.Select.Fit", "Classification.Select.MinErr.Config",
   function(object, X, y, print.level=1) {
-    error <- apply(X, 2, FUN= function(x) {object@errfun(as.numeric(x), as.numeric(y))})
+    error <- apply(X, 2, FUN= function(x) {object@errfun(x, y)})
     error.min <- min(error)
     index.min <- which(error==error.min)[1] # in case we find multiple optimal indexes
     est <- list(index.min=index.min, error.min=error.min, error=error)

@@ -1,26 +1,36 @@
-
-devtools::install_github("christophe-stevens/EnsembleBaseClass")
-devtools::install_github("christophe-stevens/EnsemblePCClass")
+devtools::install("christophe-stevens/EnsembleBaseClass")
+devtools::install("christophe-stevens/EnsemblePCClass")
 
 require("EnsembleBaseClass") 
 require("EnsemblePCClass") 
 
 
-# Data preparation
+####################################
+#
+# chris-test : 
+#
+####################################
+# Required package for benchmarking dataset
 require(mlbench)  # install.packages("mlbench")  
+
+# require ML BENCH
 data(PimaIndiansDiabetes)
+# Data preparation
 dataset <- PimaIndiansDiabetes
-# The response variable should be a vector with 0 and 1, and as a factor.  
-dataset$diabetes <- as.factor(ifelse(dataset$diabetes=="pos",1,0))
-myformula <- diabetes ~ insulin + glucose + pregnant + triceps + mass + age + pressure
+dataset$diabetes <- as.numeric(ifelse(dataset$diabetes=="pos",1,0))
+myformula <- diabetes ~ insulin + age + triceps
 perc.train <- 0.7
 index.train <- sample(1:nrow(dataset), size = round(perc.train*nrow(dataset)))
 data.train <- dataset[index.train,]
 data.predict <- dataset[-index.train,]
 
-# training ensemble
-control <- epcclass.baselearner.control(baselearners=c("knn","svm","rf")) #c("penreg","svm","knn","nnet","gbm","rf"))
-ensemble <- epcclass(formula =  myformula, data = data.train, baselearner.control= control)
+
+control <- epcclass.baselearner.control(baselearners=c("svm","xgboost","rf",
+                                                       "penreg","nnet","knn",
+                                                       "bart"))
+ensemble <- epcclass(formula =  myformula, data = data.train, 
+                     baselearner.control= control, ncores=8)
 plot(ensemble)
-pred <- round(predict(ensemble,newdata=data.predict))
-table(pred, data.predict$diabetes)
+newpred <- predict(ensemble,newdata=data.predict)
+mean((newpred-data.predict$diabetes)^2)
+table(round(newpred), data.predict$diabetes)

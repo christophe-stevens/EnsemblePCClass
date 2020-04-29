@@ -32,7 +32,7 @@ epcclass <- function(formula, data
   est.baselearner.cv.batch <- Classification.CV.Batch.Fit(my.instance.list, formula, data, ncores=ncores, filemethod=filemethod, print.level=print.level, preschedule = preschedule, schedule.method = schedule.method, task.length = task.length)
   if (print.level>=1) cat("finished CV training of base learners\n")
   Xcv <- est.baselearner.cv.batch@pred
-  y <- as.character(data[,all.vars(formula)[1]]) # TODO: more robust way of extracting y (here and inside base learner functions)
+  y <- data[,all.vars(formula)[1]] # TODO: more robust way of extracting y (here and inside base learner functions)
   
   partition.int <- generate.partition(nrow(data), integrator.control$nfold)
   my.integrator.config <- Classification.Integrator.PCR.SelMin.Config(errfun=integrator.control$errfun, partition=partition.int)
@@ -55,12 +55,12 @@ predict.epcclass <- function(object, newdata=NULL, ncores=1, preschedule = TRUE,
   } else {
     stop("invalid PCR integration method")
   }
-  return (as.numeric(newpred))
+  return (newpred)
 }
 
 plot.epcclass <- function(x, ...) {
   errfun <- x$integrator.config@errfun 
-  error <- errfun(as.numeric(x$pred), as.numeric(x$y))
+  error <- errfun(x$pred, x$y)
   oldpar <- par(mfrow=c(1,2))
   plot(x$est$baselearner.cv.batch, errfun=errfun, ylim.adj = error)
   abline(h=error, lty=2)
