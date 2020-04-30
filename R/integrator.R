@@ -59,9 +59,10 @@ Classification.Sweep.PCR.FitObj <- setClass("Classification.Sweep.PCR.FitObj", c
 setMethod("Classification.Sweep.Fit", "Classification.Sweep.PCR.Config",
   function(object, X, y) {
     maxpc <- min(dim(X))
-    pcr <- prcomp(X*100)  # avoid having probability but use count using loggOdd here returns error due to +/-Inf
-    Xpc <- predict(pcr, X)
-    predmat <- array(NA, dim=c(nrow(X),maxpc))
+    X.trsf <- log(X / ( 1 - X))
+    pcr <- prcomp(X.trsf)  # avoid having probability but use count using loggOdd here returns error due to +/-Inf
+    Xpc <- predict(pcr, X.trsf)
+    predmat <- array(NA, dim=c(nrow(X.trsf),maxpc))
     beta.list <- list()
     pca.reg.data <- cbind(data.frame(y=y), as.data.frame(Xpc))
     for (i in 1:maxpc) {
@@ -78,7 +79,7 @@ setMethod("Classification.Sweep.Fit", "Classification.Sweep.PCR.Config",
       beta.list[[i]] <- as.vector(glmmdl$coeff)
     }
     object@n <- i
-    est <- list(pcr=pcr, beta.list=beta.list, dimX=dim(X))
+    est <- list(pcr=pcr, beta.list=beta.list, dimX=dim(X.trsf))
     ret <- Classification.Sweep.PCR.FitObj(config=object, est=est, pred=predmat)
     return (ret)
   }
@@ -87,8 +88,9 @@ setMethod("Classification.Sweep.Fit", "Classification.Sweep.PCR.Config",
 predict.Classification.Sweep.PCR.FitObj <- function(object, Xnew=NULL, ...) {
   if (is.null(Xnew)) return (object@pred)
   maxpc <- object@config@n
-  Xpc.new <- cbind(1,predict(object@est$pcr, Xnew)[,1:maxpc,drop=F])
-  newpred <- array(NA, dim=c(nrow(Xnew),maxpc))
+  Xnew.trsf <- log(Xnew / ( 1 - Xnew))
+  Xpc.new <- cbind(1,predict(object@est$pcr, Xnew.trsf)[,1:maxpc,drop=F])
+  newpred <- array(NA, dim=c(nrow(Xnew.trsf),maxpc))
   for (i in 1:maxpc) {
     xb <- Xpc.new[,1:(i+1)]%*%object@est$beta.list[[i]]
     newpred[,i] <- exp(xb)/(exp(xb)+1)
